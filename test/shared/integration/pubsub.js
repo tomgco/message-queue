@@ -183,4 +183,41 @@ adapters.forEach(function(adapterName) {
     });
   });
 
+  test('should publish multiple messages without blocking', function(assert) {
+    var pub;
+    var sub = new adapter.Subscribe({channel: 'cats', json: false});
+    var count = 0;
+
+    sub.on('ready', function() {
+      pub = new adapter.Publish();
+
+      pub.on('ready', function(err) {
+        assert.equal(err, undefined);
+        var channel = pub.channel('cats');
+        function assertMessage() {
+        }
+        for (var i = 0; i < 1e4; i++) {
+          channel.publish('meow', assertMessage);
+        }
+      });
+
+      sub.on('message', function() {
+        count++;
+        if (count === 1e4) {
+          pub.close();
+          sub.close();
+        }
+      });
+
+    });
+
+    setTimeout(function() {
+      if (count === 0 || count < process.maxTickDepth) {
+        assert.fail('timed out not enough messages: ' + count);
+      }
+      pub.close();
+      sub.close();
+      assert.end();
+    }, 500);
+  });
 });
